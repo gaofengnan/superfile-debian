@@ -74,36 +74,32 @@ build_architecture() {
         return 1
     fi
 
-    # Upstream ships static Linux binaries for amd64/arm64 only, and both work
-    # on every Debian suite we target.
-    declare -a arr=("bookworm" "trixie" "forky" "sid")
+    # One package for every suite: upstream ships one binary per architecture,
+    # so only the old ~<suite> version suffix ever differed. The fixed ~griffo
+    # keeps it below the distro's own build of the same version.
+    FULL_VERSION="$SUPERFILE_VERSION-${BUILD_VERSION}~griffo_${build_arch}"
+    echo "  Building $FULL_VERSION"
 
-    for dist in "${arr[@]}"; do
-        FULL_VERSION="$SUPERFILE_VERSION-${BUILD_VERSION}~${dist}_${build_arch}"
-        echo "  Building $FULL_VERSION"
+    if ! docker build . -t "superfile-$build_arch" \
+        --build-arg SUPERFILE_VERSION="$SUPERFILE_VERSION" \
+        --build-arg BUILD_VERSION="$BUILD_VERSION" \
+        --build-arg FULL_VERSION="$FULL_VERSION" \
+        --build-arg ARCH="$build_arch" \
+        --build-arg SPF_RELEASE="$superfile_release"; then
+        echo "❌ Failed to build Docker image for $build_arch"
+        return 1
+    fi
 
-        if ! docker build . -t "superfile-$dist-$build_arch" \
-            --build-arg DEBIAN_DIST="$dist" \
-            --build-arg SUPERFILE_VERSION="$SUPERFILE_VERSION" \
-            --build-arg BUILD_VERSION="$BUILD_VERSION" \
-            --build-arg FULL_VERSION="$FULL_VERSION" \
-            --build-arg ARCH="$build_arch" \
-            --build-arg SPF_RELEASE="$superfile_release"; then
-            echo "❌ Failed to build Docker image for $dist on $build_arch"
-            return 1
-        fi
+    id="$(docker create "superfile-$build_arch")"
+    if ! docker cp "$id:/superfile_$FULL_VERSION.deb" - > "./superfile_$FULL_VERSION.deb"; then
+        echo "❌ Failed to extract .deb package for $build_arch"
+        return 1
+    fi
 
-        id="$(docker create "superfile-$dist-$build_arch")"
-        if ! docker cp "$id:/superfile_$FULL_VERSION.deb" - > "./superfile_$FULL_VERSION.deb"; then
-            echo "❌ Failed to extract .deb package for $dist on $build_arch"
-            return 1
-        fi
-
-        if ! tar -xf "./superfile_$FULL_VERSION.deb"; then
-            echo "❌ Failed to extract .deb contents for $dist on $build_arch"
-            return 1
-        fi
-    done
+    if ! tar -xf "./superfile_$FULL_VERSION.deb"; then
+        echo "❌ Failed to extract .deb contents for $build_arch"
+        return 1
+    fi
 
     # Clean up extracted directory
     rm -rf "$superfile_release" || true
