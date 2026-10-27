@@ -2,6 +2,8 @@
 
 # superfile
 
+> Fork of [dariogriffo/superfile-debian](https://github.com/dariogriffo/superfile-debian) (MIT); the original packaging is by Dario Griffo. Served at [deb.gaofn.xyz](https://deb.gaofn.xyz) for Debian 12 (bookworm) and 13 (trixie).
+
 **Pretty fancy and modern terminal file manager.**
 
 ![GitHub Release](https://img.shields.io/github/v/release/yorukot/superfile?display_name=tag&color=%23a6a)
